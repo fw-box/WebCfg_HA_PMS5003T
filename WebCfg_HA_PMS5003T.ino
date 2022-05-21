@@ -8,6 +8,9 @@
 // Connections :
 //
 // Required Library :
+//   https://github.com/fw-box/FwBox_Preferences
+//   https://github.com/fw-box/FwBox_WebCfg
+//   https://github.com/knolleary/pubsubclient
 //   https://github.com/plapointe6/HAMqttDevice
 //
 
@@ -17,10 +20,10 @@
 #include <PubSubClient.h>
 #include "HAMqttDevice.h"
 
-#define DEVICE_TYPE 11
+#define DEVICE_TYPE 35
 #define FIRMWARE_VERSION "1.0.0"
-#define VALUE_COUNT 5
 
+#define VALUE_COUNT 5
 #define VAL_PM1_0 0
 #define VAL_PM2_5 1
 #define VAL_PM10_0 2
