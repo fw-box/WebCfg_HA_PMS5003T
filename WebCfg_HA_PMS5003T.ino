@@ -21,7 +21,7 @@
 #include "HAMqttDevice.h"
 
 #define DEVICE_TYPE 35
-#define FIRMWARE_VERSION "1.0.0"
+#define FIRMWARE_VERSION "1.0.1"
 
 #define VALUE_COUNT 5
 #define VAL_PM1_0 0
@@ -175,33 +175,34 @@ void loop()
       // If user enable the HA connection.
       //
       if (HAEnable == true) {
-        if (WiFi.status() == WL_CONNECTED && !MqttClient.connected()) {
-          Serial.print("Try to connect MQTT broker - ");
-          Serial.printf("%s, %s, %s\n", MqttBrokerIp.c_str(), MqttBrokerUsername.c_str(), MqttBrokerPassword.c_str());
-          HaMqttConnect(MqttBrokerIp, MqttBrokerUsername, MqttBrokerPassword, HaDev->getConfigTopic(), HaDev->getConfigPayload(), &AttemptingMqttConnTime);
-          Serial.println("Done");
-        }
-
-        if (WiFi.status() == WL_CONNECTED && MqttClient.connected()) {
-          String str_payload = "{";
-          str_payload +=  "\"pm1_0\":";
-          str_payload += (int)Value[VAL_PM1_0];
-          str_payload += ",\"pm2_5\":";
-          str_payload += (int)Value[VAL_PM2_5];
-          str_payload += ",\"pm10_0\":";
-          str_payload += (int)Value[VAL_PM10_0];
-          if(Pms.readDeviceType() == FwBox_PMSX003::PMS5003T) {
-            str_payload += ",\"temp\":";
-            str_payload += (int)Value[VAL_TEMP];
-            str_payload += ",\"humi\":";
-            str_payload += (int)Value[VAL_HUMI];
+        if (WiFi.status() == WL_CONNECTED) {
+          if (MqttClient.connected()) {
+            String str_payload = "{";
+            str_payload +=  "\"pm1_0\":";
+            str_payload += (int)Value[VAL_PM1_0];
+            str_payload += ",\"pm2_5\":";
+            str_payload += (int)Value[VAL_PM2_5];
+            str_payload += ",\"pm10_0\":";
+            str_payload += (int)Value[VAL_PM10_0];
+            if(Pms.readDeviceType() == FwBox_PMSX003::PMS5003T) {
+              str_payload += ",\"temp\":";
+              str_payload += (int)Value[VAL_TEMP];
+              str_payload += ",\"humi\":";
+              str_payload += (int)Value[VAL_HUMI];
+            }
+            str_payload += "}";
+            Serial.println(HaDev->getStateTopic());
+            Serial.println(str_payload);
+            bool result_publish = MqttClient.publish(HaDev->getStateTopic().c_str(), str_payload.c_str());
+            Serial.printf("result_publish=%d\n", result_publish);
+          } // END OF "if (MqttClient.connected())"
+          else {
+            Serial.print("Try to connect MQTT broker - ");
+            Serial.printf("%s, %s, %s\n", MqttBrokerIp.c_str(), MqttBrokerUsername.c_str(), MqttBrokerPassword.c_str());
+            HaMqttConnect(MqttBrokerIp, MqttBrokerUsername, MqttBrokerPassword, HaDev->getConfigTopic(), HaDev->getConfigPayload(), &AttemptingMqttConnTime);
+            Serial.println("Done");
           }
-          str_payload += "}";
-          Serial.println(HaDev->getStateTopic());
-          Serial.println(str_payload);
-          bool result_publish = MqttClient.publish(HaDev->getStateTopic().c_str(), str_payload.c_str());
-          Serial.printf("result_publish=%d\n", result_publish);
-        }
+        } // END OF "if (WiFi.status() == WL_CONNECTED)"
       }
     }
 
