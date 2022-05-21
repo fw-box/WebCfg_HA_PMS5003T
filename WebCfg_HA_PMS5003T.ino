@@ -71,8 +71,6 @@ void setup()
   Serial.begin(115200);
   WebCfg.earlyBegin();
 
-  pinMode(LED_BUILTIN, OUTPUT);
-
   //
   // Initialize the PMSX003 Sensor
   //
