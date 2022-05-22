@@ -12,6 +12,7 @@
 //   https://github.com/fw-box/FwBox_WebCfg
 //   https://github.com/knolleary/pubsubclient
 //   https://github.com/plapointe6/HAMqttDevice
+//   https://github.com/fw-box/FwBox_PMSX003
 //
 
 #include <Wire.h>
@@ -21,7 +22,7 @@
 #include "HAMqttDevice.h"
 
 #define DEVICE_TYPE 35
-#define FIRMWARE_VERSION "1.0.1"
+#define FIRMWARE_VERSION "1.0.2"
 
 #define VALUE_COUNT 5
 #define VAL_PM1_0 0
