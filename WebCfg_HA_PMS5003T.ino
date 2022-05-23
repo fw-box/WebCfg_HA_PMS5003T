@@ -22,7 +22,8 @@
 #include "HAMqttDevice.h"
 
 #define DEVICE_TYPE 35
-#define FIRMWARE_VERSION "1.0.2"
+#define FIRMWARE_VERSION "1.0.3"
+#define DEV_TYPE_NAME "DUST"
 
 #define VALUE_COUNT 5
 #define VAL_PM1_0 0
@@ -85,6 +86,7 @@ void setup()
   WebCfg.setItem(2, "MQTT Broker Password", "MQTT_PASS"); // string input
   WebCfg.setItem(3, "Home Assistant", "HA_EN_DIS", ITEM_TYPE_EN_DIS); // enable/disable select input
   WebCfg.setItem(4, "Device Name", "DEV_NAME"); // string input
+  WebCfg.setWiFiApMiddleName(DEV_TYPE_NAME);
   WebCfg.begin();
 
   //
@@ -102,12 +104,15 @@ void setup()
   DevName = WebCfg.getItemValueString("DEV_NAME");
   Serial.printf("Device Name = %s\n", DevName.c_str());
   if (DevName.length() <= 0) {
-    DevName = "box_dust_sensor_";
+    //DevName = "fwbox_????_";
+    DevName = "fwbox_";
+    DevName += DEV_TYPE_NAME;
+    DevName += "_";
     String str_mac = WiFi.macAddress();
     str_mac.replace(":", "");
-    str_mac.toLowerCase();
     if (str_mac.length() >= 12) {
       DevName = DevName + str_mac.substring(8);
+      DevName.toLowerCase(); // Default device name
       Serial.printf("Auto generated Device Name = %s\n", DevName.c_str());
     }
   }
@@ -135,7 +140,15 @@ void setup()
       //
       // Connect to Home Assistant MQTT broker.
       //
-      HaMqttConnect(MqttBrokerIp, MqttBrokerUsername, MqttBrokerPassword, HaDev->getConfigTopic(), HaDev->getConfigPayload(), &AttemptingMqttConnTime);
+      int re_code = HaMqttConnect(
+        MqttBrokerIp,
+        MqttBrokerUsername,
+        MqttBrokerPassword,
+        HaDev->getConfigTopic(),
+        HaDev->getConfigPayload(),
+        HaDev->getCommandTopic(),
+        &AttemptingMqttConnTime
+      );
     }
   }
   Serial.printf("Home Assistant = %d\n", HAEnable);
@@ -198,10 +211,17 @@ void loop()
             Serial.printf("result_publish=%d\n", result_publish);
           } // END OF "if (MqttClient.connected())"
           else {
-            Serial.print("Try to connect MQTT broker - ");
-            Serial.printf("%s, %s, %s\n", MqttBrokerIp.c_str(), MqttBrokerUsername.c_str(), MqttBrokerPassword.c_str());
-            HaMqttConnect(MqttBrokerIp, MqttBrokerUsername, MqttBrokerPassword, HaDev->getConfigTopic(), HaDev->getConfigPayload(), &AttemptingMqttConnTime);
-            Serial.println("Done");
+	        //Serial.print("Try to connect MQTT broker - ");
+	        //Serial.printf("%s, %s, %s\n", MqttBrokerIp.c_str(), MqttBrokerUsername.c_str(), MqttBrokerPassword.c_str());
+	        int re_code = HaMqttConnect(
+	          MqttBrokerIp,
+	          MqttBrokerUsername,
+	          MqttBrokerPassword,
+	          HaDev->getConfigTopic(),
+	          HaDev->getConfigPayload(),
+	          HaDev->getCommandTopic(),
+	          &AttemptingMqttConnTime
+	        );
           }
         } // END OF "if (WiFi.status() == WL_CONNECTED)"
       }
@@ -279,11 +299,23 @@ uint8_t readSensor()
   return 1; // Error
 }
 
-int HaMqttConnect(const String& brokerIp, const String& brokerUsername, const String& brokerPassword, const String& configTopic, const String& configPayload, unsigned long* attemptingTime)
+int HaMqttConnect(
+      const String& brokerIp,
+      const String& brokerUsername,
+      const String& brokerPassword,
+      const String& configTopic,
+      const String& configPayload,
+      const String& commandTopic,
+      unsigned long* attemptingTime)
 {
-  if (millis() - *attemptingTime < 10 * 1000) {
+  if ((millis() - (*attemptingTime)) < (10 * 1000)) {
     return 5; // attemptingTime is too short
   }
+
+  //
+  // Attempt to connect
+  //
+  *attemptingTime = millis();
 
   if (brokerIp.length() > 0) {
     MqttClient.setServer(brokerIp.c_str(), 1883);
@@ -300,43 +332,47 @@ int HaMqttConnect(const String& brokerIp, const String& brokerUsername, const St
       String client_id = "Fw-Box-";
       client_id += str_mac;
       Serial.println("client_id :" + client_id);
-      // Attempt to connect
-      *attemptingTime = millis();
+
       if (MqttClient.connect(client_id.c_str(), brokerUsername.c_str(), brokerPassword.c_str())) {
         Serial.println("connected");
-      } else {
+
+        Serial.printf("configTopic.c_str()=%s\n", configTopic.c_str());
+        Serial.printf("configPayload.c_str()=%s\n", configPayload.c_str());
+        Serial.printf("commandTopic.c_str()=%s\n", commandTopic.c_str());
+        
+        bool result_publish = MqttClient.publish(configTopic.c_str(), configPayload.c_str());
+        Serial.printf("result_publish=%d\n", result_publish);
+      
+        //bool result_subscribe = MqttClient.subscribe(commandTopic.c_str());
+        //Serial.printf("result_subscribe=%d\n", result_subscribe);
+        return 0; // Success
+      }
+      else {
         Serial.print("failed, rc=");
         Serial.print(MqttClient.state());
         Serial.println(" try again in 5 seconds");
         return 1; // Failed
       }
-    }
+    } // END OF "if (!MqttClient.connected())"
 
-    if (MqttClient.connected()) {
-      Serial.printf("configTopic.c_str()=%s\n", configTopic.c_str());
-      Serial.printf("configPayload.c_str()=%s\n", configPayload.c_str());
-      bool result_publish = MqttClient.publish(configTopic.c_str(), configPayload.c_str());
-      Serial.printf("result_publish=%d\n", result_publish);
-      return 0; // Success
-    }
-    else {
-      return 3; // Still trying
-    }
   } // END OF "if (brokerIp.length() > 0)"
   else {
     return 2; // Failed, broker IP is empty.
   }
+
+  return 0; // Success
 }
 
 //
 // Callback function for MQTT subscribe.
 //
 void MqttCallback(char* topic, byte* payload, unsigned int length) {
+  String str_from_ha = "";
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
   for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
+    str_from_ha += (char)payload[i];
   }
-  Serial.println();
+  Serial.println(str_from_ha);
 }
