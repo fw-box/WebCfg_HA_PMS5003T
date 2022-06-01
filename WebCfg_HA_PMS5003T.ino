@@ -22,7 +22,7 @@
 #include "HAMqttDevice.h"
 
 #define DEVICE_TYPE 35
-#define FIRMWARE_VERSION "1.0.4"
+#define FIRMWARE_VERSION "1.0.5"
 #define DEV_TYPE_NAME "DUST"
 
 #define VALUE_COUNT 5
@@ -71,6 +71,8 @@ void setup()
 {
   Wire.begin();
   Serial.begin(115200);
+
+  WebCfg.setWiFiApMiddleName(DEV_TYPE_NAME);
   WebCfg.earlyBegin();
 
   //
@@ -86,7 +88,6 @@ void setup()
   WebCfg.setItem(2, "MQTT Broker Password", "MQTT_PASS"); // string input
   WebCfg.setItem(3, "Home Assistant", "HA_EN_DIS", ITEM_TYPE_EN_DIS); // enable/disable select input
   WebCfg.setItem(4, "Device Name", "DEV_NAME"); // string input
-  WebCfg.setWiFiApMiddleName(DEV_TYPE_NAME);
   WebCfg.begin();
 
   //
